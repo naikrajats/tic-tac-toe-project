@@ -1,0 +1,20 @@
+# Compiled binary
+tic_tac_toe
+
+# Object files
+*.o
+
+# Editor/IDE-specific files
+*.swp
+*.swo
+*.bak
+*~
+
+# macOS files
+.DS_Store
+
+# VSCode settings
+.vscode/
+
+# Build directories (if any)
+build/
