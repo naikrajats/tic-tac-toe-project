@@ -1,4 +1,7 @@
-#include <stdio.h>
+
+    #include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
 
 #define SIZE 3
 
@@ -7,92 +10,80 @@ typedef struct {
     int moves;
 } Board;
 
+/* ---------- GLOBAL SCORE ---------- */
+int scoreX = 0, scoreO = 0, scoreDraw = 0;
+
+/* ---------- BOARD FUNCTIONS ---------- */
 void init_board(Board *b) {
     b->moves = 0;
-    for (int i = 0; i < SIZE; i++) {
-        for (int j = 0; j < SIZE; j++) {
+    for (int i = 0; i < SIZE; i++)
+        for (int j = 0; j < SIZE; j++)
             b->cells[i][j] = '1' + i * SIZE + j;
-        }
-    }
 }
 
 void print_board(const Board *b) {
     printf("\n");
     for (int i = 0; i < SIZE; i++) {
         printf(" %c | %c | %c ", b->cells[i][0], b->cells[i][1], b->cells[i][2]);
-        if (i < SIZE - 1) {
+        if (i < SIZE - 1)
             printf("\n---|---|---\n");
-        }
     }
     printf("\n");
 }
 
+/* ---------- GAME LOGIC ---------- */
+int valid_line(char a, char b, char c) {
+    return (a == b && b == c && (a == 'X' || a == 'O'));
+}
+
 int check_winner(const Board *b) {
-    // rows and columns
     for (int i = 0; i < SIZE; i++) {
-        if (b->cells[i][0] == b->cells[i][1] &&
-            b->cells[i][1] == b->cells[i][2]) {
-            return 1;
-        }
-        if (b->cells[0][i] == b->cells[1][i] &&
-            b->cells[1][i] == b->cells[2][i]) {
-            return 1;
-        }
+        if (valid_line(b->cells[i][0], b->cells[i][1], b->cells[i][2])) return 1;
+        if (valid_line(b->cells[0][i], b->cells[1][i], b->cells[2][i])) return 1;
     }
-    // diagonals
-    if (b->cells[0][0] == b->cells[1][1] &&
-        b->cells[1][1] == b->cells[2][2]) {
-        return 1;
-    }
-    if (b->cells[0][2] == b->cells[1][1] &&
-        b->cells[1][1] == b->cells[2][0]) {
-        return 1;
-    }
+    if (valid_line(b->cells[0][0], b->cells[1][1], b->cells[2][2])) return 1;
+    if (valid_line(b->cells[0][2], b->cells[1][1], b->cells[2][0])) return 1;
     return 0;
 }
 
 int is_draw(const Board *b) {
-    return b->moves >= SIZE * SIZE;
+    return b->moves == SIZE * SIZE;
 }
 
 int make_move(Board *b, char symbol, int cell) {
-    if (cell < 1 || cell > 9) {
-        return 0;
-    }
-    int row = (cell - 1) / SIZE;
-    int col = (cell - 1) % SIZE;
+    if (cell < 1 || cell > 9) return 0;
 
-    if (b->cells[row][col] == 'X' || b->cells[row][col] == 'O') {
-        return 0;
-    }
+    int r = (cell - 1) / SIZE;
+    int c = (cell - 1) % SIZE;
 
-    b->cells[row][col] = symbol;
+    if (b->cells[r][c] == 'X' || b->cells[r][c] == 'O')
+        return 0;
+
+    b->cells[r][c] = symbol;
     b->moves++;
     return 1;
 }
 
+/* ---------- INPUT ---------- */
 int read_cell_input(int *cell) {
-    int result;
-    while (1) {
-        result = scanf("%d", cell);
-        if (result == 1) {
-            // valid integer, but may be out of range
-            while (getchar() != '\n') {
-                // clear extra chars from buffer
-            }
-            return 1;
-        } else {
-            // invalid input (non-integer), clear buffer
-            printf("Invalid input. Enter a number between 1 and 9: ");
-            int c;
-            while ((c = getchar()) != '\n' && c != EOF) {
-                // discard
-            }
-        }
+    while (scanf("%d", cell) != 1 || *cell < 1 || *cell > 9) {
+        printf("Invalid input. Enter 1-9: ");
+        while (getchar() != '\n');
     }
+    while (getchar() != '\n');
+    return 1;
 }
 
-void play_game(void) {
+/* ---------- COMPUTER MOVE ---------- */
+void computer_move(Board *b) {
+    int cell;
+    do {
+        cell = rand() % 9 + 1;
+    } while (!make_move(b, 'O', cell));
+}
+
+/* ---------- GAME MODES ---------- */
+void play_game(int vsComputer) {
     Board board;
     char player = 'X';
     int cell;
@@ -101,28 +92,31 @@ void play_game(void) {
 
     while (1) {
         print_board(&board);
-        printf("Player %c, enter cell (1-9): ", player);
 
-        if (!read_cell_input(&cell)) {
-            // should not reach here, but safety
-            printf("Input error.\n");
-            continue;
-        }
+        if (player == 'O' && vsComputer) {
+            printf("Computer is making a move...\n");
+            computer_move(&board);
+        } else {
+            printf("Player %c, enter cell (1-9): ", player);
+            read_cell_input(&cell);
 
-        if (!make_move(&board, player, cell)) {
-            printf("Invalid move. Try again.\n");
-            continue;
+            if (!make_move(&board, player, cell)) {
+                printf("Invalid move. Try again.\n");
+                continue;
+            }
         }
 
         if (check_winner(&board)) {
             print_board(&board);
             printf("Player %c wins!\n", player);
+            (player == 'X') ? scoreX++ : scoreO++;
             break;
         }
 
         if (is_draw(&board)) {
             print_board(&board);
             printf("It's a draw!\n");
+            scoreDraw++;
             break;
         }
 
@@ -130,22 +124,43 @@ void play_game(void) {
     }
 }
 
+/* ---------- MENU ---------- */
+void show_score(void) {
+    printf("\nSCOREBOARD\n");
+    printf("X Wins : %d\n", scoreX);
+    printf("O Wins : %d\n", scoreO);
+    printf("Draws : %d\n\n", scoreDraw);
+}
+
 int main(void) {
-    char choice;
+    int choice;
+    char again;
+
+    srand(time(NULL));
 
     do {
-        play_game();
+        printf("\n--- TIC TAC TOE ---\n");
+        printf("1. Player vs Player\n");
+        printf("2. Player vs Computer\n");
+        printf("Enter choice: ");
+        scanf("%d", &choice);
+        while (getchar() != '\n');
+
+        if (choice == 1)
+            play_game(0);
+        else if (choice == 2)
+            play_game(1);
+        else
+            printf("Invalid choice!\n");
+
+        show_score();
 
         printf("Play again? (y/n): ");
-        if (scanf(" %c", &choice) != 1) {
-            break;
-        }
-        while (getchar() != '\n') {
-            // clear input buffer
-        }
-    } while (choice == 'y' || choice == 'Y');
+        scanf(" %c", &again);
+        while (getchar() != '\n');
+
+    } while (again == 'y' || again == 'Y');
 
     printf("Thanks for playing!\n");
     return 0;
 }
-
